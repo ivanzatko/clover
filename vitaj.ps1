@@ -13,19 +13,28 @@ W '   a na rozdiel od chatu v prehliadači vie aj robiť: otvoriť súbor,'
 W '   prepísať ho, pripraviť mail, upratať priečinok. Vždy sa ťa najprv'
 W '   spýta, či smie.'
 W ''
-W '   Čo sa stane, keď stlačíš Enter' White
-W ''
-W '   1. Claude sa spýta na farby. Daj Enter, na tom teraz nezáleží.' Yellow
-W '   2. Otvorí sa prehliadač a prihlásiš sa svojím Claude účtom.' Yellow
-W '      (Potrebuješ predplatné Pro alebo Max. Robí sa to len raz.)' DarkGray
-W '   3. Spýta sa, či dôveruje tomuto priečinku. Áno, je to tvoj' Yellow
-W '      domovský priečinok a bez tvojho súhlasu v ňom nič nezmení.'
-W '   4. Napíš /vitaj a Claude ťa za pár minút prevedie tým,' Yellow
-W '      čo potrebuješ vedieť. Je to celkom zábavné. Vážne.'
-W ''
-W '   Zatiaľ je tu jeden panel, aby sa ti prihlasovanie neotvorilo štyrikrát.' DarkGray
-W '   Nabudúce sa Clover otvorí rovno so štyrmi Claudmi.' DarkGray
-W ''
+$LoggedIn = (Test-Path "$HOME\.claude.json") -and (Select-String -Path "$HOME\.claude.json" -SimpleMatch '"oauthAccount"' -Quiet)
+if ($LoggedIn) {
+  W '   Claude je už prihlásený, takže môžeme rovno začať.'
+  W ''
+  W '   Po Enteri napíš /vitaj. Päť minút a ukážem ti, v čom je Clover' White
+  W '   iný než obyčajný terminál. Rukami, nie prednáškou.' White
+  W ''
+} else {
+  W '   Čo sa stane, keď stlačíš Enter' White
+  W ''
+  W '   1. Claude sa spýta na farby. Daj Enter, na tom teraz nezáleží.' Yellow
+  W '   2. Otvorí sa prehliadač a prihlásiš sa svojím Claude účtom.' Yellow
+  W '      (Potrebuješ predplatné Pro alebo Max. Robí sa to len raz.)' DarkGray
+  W '   3. Spýta sa, či dôveruje tomuto priečinku. Áno, je to tvoj' Yellow
+  W '      domovský priečinok a bez tvojho súhlasu v ňom nič nezmení.'
+  W '   4. Napíš /vitaj. Päť minút a ukážem ti, v čom je Clover' Yellow
+  W '      iný než obyčajný terminál. Rukami, nie prednáškou.'
+  W ''
+  W '   Zatiaľ je tu jeden panel, aby sa ti prihlasovanie neotvorilo štyrikrát.' DarkGray
+  W '   Nabudúce sa Clover otvorí rovno so štyrmi Claudmi.' DarkGray
+  W ''
+}
 Read-Host '   Stlač Enter a ideme na to' | Out-Null
 $st = "$HOME\.config\clover\state"
 New-Item -ItemType Directory -Force $st | Out-Null

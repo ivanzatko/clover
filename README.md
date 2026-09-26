@@ -20,14 +20,25 @@ Nainštaluje: appku Clover, git, Claude Code, konfig. Na Macu aj Homebrew.
 Počas inštalácie po slovensky vysvetľuje, čo robí a prečo.
 Existujúce súbory neprepisuje (`~/.claude/CLAUDE.md`, `settings.json`), `settings.json` pred úpravou zálohuje.
 
+## E-mail a káva ☕
+
+Clover je zadarmo. Inštalátor sa raz spýta na e-mail a pošle ho na ivanzatko.com
+(`/api/clover/install`: e-mail, systém, verzia), aby Ivan vedel, kto Clover používa.
+Nikomu ho nedá. Pri aktualizácii sa už nepýta (`~/.config/clover/email`).
+
+Prvých 48 hodín po inštalácii ukazuje Clover hore lištu „☕ Sadol ti Clover?“ a raz za spustenie
+notifikáciu s odkazom na kávu za 20 € (Cmd+Shift+K, Windows Ctrl+Shift+K). Po zaplatení
+alebo po 48 hodinách to zmizne a už sa nevráti. Nič sa nezamyká.
+
 ## Prvé spustenie
 
 1. Clover sa prvýkrát otvorí s **jedným** panelom a uvítaním (`vitaj.sh`), ktoré vysvetlí, čo sa bude diať.
    Jeden panel preto, aby sa prihlásenie do Clauda neotvorilo štyrikrát naraz.
 2. Claude sa raz spýta na farby a prihlásenie (treba predplatné Pro alebo Max).
-3. Napíš **`/vitaj`**: sprievodca (skill v `~/.claude/skills/vitaj`) ťa za pár minút prevedie
-   tým podstatným. Zapíše si, kto si, vyskúšaš si kopírovanie, súbory myšou a panely.
-4. Od ďalšieho štartu sa Clover otvára so štyrmi panelmi.
+3. Napíš **`/vitaj`**: sprievodca (skill v `~/.claude/skills/vitaj`) ti za 5 minút rukami ukáže,
+   v čom je Clover iný než obyčajný terminál: písanie, myš, súbory, panely, „kto na teba čaká“, obnova.
+4. Od ďalšieho štartu sa Clover otvára so štyrmi panelmi. Kto je do Clauda už prihlásený,
+   má štyri panely hneď.
 
 Kto Clover už mal, uvítanie neuvidí (inštalátor vytvorí `~/.config/clover/state/welcomed`).
 

@@ -16,6 +16,17 @@ cat <<EOF
    prepísať ho, pripraviť mail, upratať priečinok. Vždy sa ťa najprv
    spýta, či smie.
 
+EOF
+if grep -qs '"oauthAccount"' "$HOME/.claude.json"; then
+  cat <<EOF
+   Claude je už prihlásený, takže môžeme rovno začať.
+
+   Po Enteri napíš ${B}/vitaj${R}. Päť minút a ukážem ti, v čom je Clover
+   iný než obyčajný terminál. Rukami, nie prednáškou.
+
+EOF
+else
+  cat <<EOF
    ${B}Čo sa stane, keď stlačíš Enter${R}
 
    ${Y}1.${R} Claude sa spýta na farby. Daj Enter, na tom teraz nezáleží.
@@ -23,13 +34,14 @@ cat <<EOF
       ${D}(Potrebuješ predplatné Pro alebo Max. Robí sa to len raz.)${R}
    ${Y}3.${R} Spýta sa, či dôveruje tomuto priečinku. Áno, je to tvoj
       domovský priečinok a bez tvojho súhlasu v ňom nič nezmení.
-   ${Y}4.${R} Napíš ${B}/vitaj${R} a Claude ťa za pár minút prevedie tým,
-      čo potrebuješ vedieť. Je to celkom zábavné. Vážne.
+   ${Y}4.${R} Napíš ${B}/vitaj${R}. Päť minút a ukážem ti, v čom je Clover
+      iný než obyčajný terminál. Rukami, nie prednáškou.
 
    ${D}Zatiaľ je tu jeden panel, aby sa ti prihlasovanie neotvorilo štyrikrát.
    Nabudúce sa Clover otvorí rovno so štyrmi Claudmi.${R}
 
 EOF
+fi
 printf "   Stlač ${B}Enter${R} a ideme na to… "
 read -r _
 mkdir -p "$HOME/.config/clover/state"

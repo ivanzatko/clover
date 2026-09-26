@@ -26,11 +26,17 @@ local PANES = user.panes or 4 -- 1, 2 alebo 4
 local CLAUDE = 'claude' .. (user.claude_args and (' ' .. user.claude_args) or '')
 
 local RESTORE = user.restore ~= false -- obnoviť sessions z minulého spustenia
--- Úplne prvý štart: jeden panel s uvítaním (vitaj.sh), aby sa prihlásenie do Clauda
--- neotvorilo štyrikrát naraz. Súbor welcomed vytvorí vitaj.sh / vitaj.ps1.
+-- Úplne prvý štart: uvítanie (vitaj.sh) v paneli 1. Kto ešte nie je prihlásený do Clauda,
+-- dostane len jeden panel, aby sa prihlásenie neotvorilo štyrikrát naraz.
+-- Súbor welcomed vytvorí vitaj.sh / vitaj.ps1.
 local function exists(p) local fh = io.open(p, 'r'); if fh then fh:close() return true end return false end
 local FIRST_RUN = not exists(table.concat({ home, '.config', 'clover', 'state', 'welcomed' }, sep))
-if FIRST_RUN then PANES = 1 end
+local function logged_in()                  -- Claude už prihlásený? (~/.claude.json má oauthAccount)
+  local fh = io.open(home .. sep .. '.claude.json', 'r'); if not fh then return false end
+  local s = fh:read('*a') or ''; fh:close()
+  return s:find('"oauthAccount"', 1, true) ~= nil
+end
+if FIRST_RUN and not logged_in() then PANES = 1 end   -- 4 prihlásenia naraz nikto nechce
 
 -- Príkaz pre panel s Claudom a pre obyčajný terminál.
 -- slot 1–4 = panely z mriežky. Hook remember.sh si pre každý slot pamätá
@@ -122,6 +128,40 @@ config.scrollback_lines = 20000
 config.audible_bell = 'Disabled'
 config.adjust_window_size_when_changing_font_size = false
 
+-- ── Káva ☕: prvých 48 h po inštalácii ────────────────────────────────────────
+-- Inštalácia je zadarmo. Prvých 48 h po nej ukazuje lišta hore odkaz na kávu (20 €)
+-- a raz za spustenie príde notifikácia (klik = platba). Po zaplatení alebo po 48 h
+-- to navždy zmizne. installed_at, email a paid zapisuje inštalátor do ~/.config/clover.
+local CFG = table.concat({ home, '.config', 'clover' }, sep)
+local API = 'https://www.ivanzatko.com/api/clover'
+local PAY_CHECK = table.concat({ CFG, 'state', 'paid-check' }, sep)
+local function cfg_read(name)
+  local fh = io.open(CFG .. sep .. name, 'r'); if not fh then return nil end
+  local v = fh:read('*l'); fh:close(); return v
+end
+local function urlenc(s) return (s:gsub('[^%w%.%-_~@]', function(c) return string.format('%%%02X', c:byte()) end)) end
+local function coffee_url()
+  local email = cfg_read('email') or ''
+  return API .. '/pay' .. (email ~= '' and ('?email=' .. urlenc(email)) or '')
+end
+local function coffee_active()                       -- true = ešte ukazovať kávu
+  if cfg_read('paid') then return false end
+  local t = tonumber(cfg_read('installed_at') or '')
+  return t ~= nil and os.time() - t < 48 * 3600
+end
+local function coffee_check()                        -- na pozadí overí platbu, výsledok v PAY_CHECK
+  local email = cfg_read('email'); if not email or email == '' then return end
+  pcall(wezterm.background_child_process, { is_windows and 'curl.exe' or '/usr/bin/curl',
+    '-fsS', '--max-time', '8', '-o', PAY_CHECK, API .. '/install?email=' .. urlenc(email) })
+end
+local function coffee_paid_result()                  -- prečíta výsledok kontroly; true = zaplatené
+  local fh = io.open(PAY_CHECK, 'r'); if not fh then return false end
+  local r = fh:read('*a') or ''; fh:close(); os.remove(PAY_CHECK)
+  if not r:find('"paid":true', 1, true) then return false end
+  local w = io.open(CFG .. sep .. 'paid', 'w'); if w then w:write(os.date('!%Y-%m-%dT%H:%M:%SZ') .. '\n'); w:close() end
+  return true
+end
+
 -- Ťahák: súbor skratky.txt vedľa konfigu, zavrie sa ľubovoľnou klávesou
 local cheat = table.concat({ home, '.config', 'clover', 'skratky.txt' }, sep)
 local cheat_cmd = is_windows
@@ -149,6 +189,10 @@ config.keys = {
   { key = 'DownArrow', mods = mod .. '|ALT', action = act.ActivatePaneDirection 'Down' },
   -- ťahák skratiek (Mac: Cmd+/, Windows: Ctrl+Shift+/)
   { key = '/', mods = mod, action = act.SpawnCommandInNewTab { args = cheat_cmd } },
+  -- káva ☕ (platba 20 €, odkaz ukazujeme len prvých 48 h po inštalácii)
+  { key = 'k', mods = mod .. (is_windows and '' or '|SHIFT'), action = wezterm.action_callback(function()
+    wezterm.open_with(coffee_url())
+  end) },
 }
 
 -- Písanie ako v bežnej appke (overené na Claude Code vstupe)
@@ -250,15 +294,40 @@ wezterm.on('update-status', function(window, pane)
       table.insert(items, (state == 'wait' and '⏳ ' .. l .. ' čaká' or '✓ ' .. l .. ' hotovo'))
     end
   end
+  -- káva: kontrola platby každých 10 min, notifikácia raz za spustenie (minútu po štarte)
+  local coffee = coffee_active()
+  if coffee then
+    local now = os.time()
+    wezterm.GLOBAL.clover_started = wezterm.GLOBAL.clover_started or now
+    if coffee_paid_result() then
+      coffee = false
+    elseif (wezterm.GLOBAL.clover_paycheck or 0) + 600 < now then
+      wezterm.GLOBAL.clover_paycheck = now
+      coffee_check()
+    end
+    if coffee and not wezterm.GLOBAL.clover_coffee_toast and wezterm.GLOBAL.clover_started + 60 < now then
+      wezterm.GLOBAL.clover_coffee_toast = true
+      window:toast_notification('Clover 🍀', 'Sadol ti Clover? Kúp mi kávu za 20 €. Klikni sem.', coffee_url(), 15000)
+    end
+  end
+
   local o = window:get_config_overrides() or {}
-  local show = #items > 0
+  local show = #items > 0 or coffee
   if (o.hide_tab_bar_if_only_one_tab == false) ~= show then
     o.hide_tab_bar_if_only_one_tab = not show
     window:set_config_overrides(o)
   end
-  window:set_right_status(show and wezterm.format {
-    { Foreground = { Color = '#e0af68' } }, { Text = table.concat(items, '   ·   ') .. '   ' },
-  } or '')
+  local status = {}
+  if #items > 0 then
+    table.insert(status, { Foreground = { Color = '#e0af68' } })
+    table.insert(status, { Text = table.concat(items, '   ·   ') .. '   ' })
+  end
+  if coffee then
+    table.insert(status, { Foreground = { Color = '#9aa5ce' } })
+    table.insert(status, { Text = (#items > 0 and '·   ' or '') .. '☕ Sadol ti Clover? Kávu kúpiš cez '
+      .. (is_windows and 'Ctrl+Shift+K' or 'Cmd+Shift+K') .. '   ' })
+  end
+  window:set_right_status(show and wezterm.format(status) or '')
 end)
 
 return config

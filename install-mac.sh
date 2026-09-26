@@ -13,6 +13,8 @@ WEZ_SHA256="e77388cad55f2e9da95a220a89206a6c58f865874a629b7c3ea3c162f5692224"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
 APP=/Applications/Clover.app
 CFG_DIR="$HOME/.config/clover"
+CLOVER_VER="2026.09.27"
+API="${CLOVER_API:-https://www.ivanzatko.com/api/clover/install}"
 # bez stien textu z Homebrew
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1
 
@@ -53,6 +55,31 @@ cat <<EOF
 
 EOF
 if [ -n "$TTY" ]; then printf "   ${B}Enter${R} = ideme · ${B}Ctrl+C${R} = radšej nie  "; pause; fi
+
+# e-mail: pri aktualizácii si ho pamätáme, pri prvej inštalácii sa spýtame
+say "Najprv tvoj e-mail"
+why "Aby som vedel, kto Clover používa, a mohol ti dať vedieť o dôležitej aktualizácii." \
+    "Nikomu ho nedám a spam ti posielať nebudem."
+valid() { [[ "$1" =~ ^[^[:space:]@\"\\]+@[^[:space:]@\"\\]+\.[^[:space:]@\"\\]+$ ]]; }
+EMAIL="${CLOVER_EMAIL:-}"
+[ -z "$EMAIL" ] && [ -s "$CFG_DIR/email" ] && EMAIL="$(cat "$CFG_DIR/email")"
+if [ -n "$EMAIL" ] && valid "$EMAIL"; then
+  done_ "použijem $EMAIL"
+elif [ -n "$TTY" ]; then
+  EMAIL=""
+  while ! valid "$EMAIL"; do
+    printf "   E-mail: "; read -r -u 3 EMAIL || break
+    EMAIL="$(printf '%s' "$EMAIL" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+    valid "$EMAIL" || echo "   ${D}Toto nevyzerá ako e-mail. Skús ešte raz.${R}"
+  done
+  valid "$EMAIL" && done_ "ďakujem"
+else
+  EMAIL=""; done_ "bez e-mailu (nespúšťaš ma v termináli)"
+fi
+mkdir -p "$CFG_DIR"
+if valid "$EMAIL"; then printf '%s\n' "$EMAIL" > "$CFG_DIR/email"; fi
+# od prvej inštalácie sa ráta 48 h, počas ktorých Clover ukazuje odkaz na kávu
+[ -s "$CFG_DIR/installed_at" ] || date +%s > "$CFG_DIR/installed_at"
 
 say "1/5 Homebrew a git"
 why "Homebrew je obchod s aplikáciami pre terminál. Bez reklám a bez recenzií s jednou hviezdičkou." \
@@ -156,6 +183,14 @@ mkdir -p ~/.claude/skills/vitaj
 fetch claude/skills/vitaj/SKILL.md ~/.claude/skills/vitaj/SKILL.md
 done_ "upratané"
 
+# zápis inštalácie; keď server nedostupný, nevadí, Clover funguje aj tak
+PAID=""
+if valid "$EMAIL"; then
+  RESP="$(curl -fsS --max-time 8 -X POST "$API" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$EMAIL\",\"os\":\"mac\",\"version\":\"$CLOVER_VER\"}" 2>/dev/null || true)"
+  case "$RESP" in *'"paid":true'*) PAID=yes ;; *'"paid":false'*) PAID=no ;; esac
+fi
+
 cat <<EOF
 
    ${G}🍀  Hotovo.${R} Clover je v Aplikáciách a práve sa otvára.
@@ -169,4 +204,9 @@ cat <<EOF
    Aktualizácia = spustiť tento istý príkaz znova.${R}
 
 EOF
+if [ "$PAID" = yes ]; then
+  date -u +%Y-%m-%dT%H:%M:%SZ > "$CFG_DIR/paid"
+  echo "   ☕ Vďaka za kávu. Clover je tvoj, aj so všetkými aktualizáciami."
+fi
+echo
 pgrep -f "$APP/Contents/MacOS" >/dev/null 2>&1 || open "$APP"

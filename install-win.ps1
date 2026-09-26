@@ -6,6 +6,8 @@ $ErrorActionPreference = 'Stop'
 $KitUrl = if ($env:KIT_URL) { $env:KIT_URL } else { 'https://raw.githubusercontent.com/ivanzatko/clover/main' }
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { '' }
 $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$CloverVer = '2026.09.27'
+$Api = if ($env:CLOVER_API) { $env:CLOVER_API } else { 'https://www.ivanzatko.com/api/clover/install' }
 
 function Say($t) { Write-Host "`n🍀 $t" -ForegroundColor Green }
 function Why([string[]]$lines) { foreach ($l in $lines) { Write-Host "   $l" -ForegroundColor DarkGray } }
@@ -46,6 +48,29 @@ Write-Host ''
 Write-Host '   Čo už máš, preskočím. Ak toto spúšťaš znova, je to aktualizácia.' -ForegroundColor DarkGray
 Write-Host ''
 Read-Host '   Enter = ideme · Ctrl+C = radšej nie' | Out-Null
+
+# e-mail: pri aktualizácii si ho pamätáme, pri prvej inštalácii sa spýtame
+Say 'Najprv tvoj e-mail'
+Why 'Aby som vedel, kto Clover používa, a mohol ti dať vedieť o dôležitej aktualizácii.',
+    'Nikomu ho nedám a spam ti posielať nebudem.'
+function ValidEmail($e) { $e -and ($e -match '^[^\s@"\\]+@[^\s@"\\]+\.[^\s@"\\]+$') }
+$CfgDir = Join-Path $HOME '.config\clover'
+New-Item -ItemType Directory -Force $CfgDir | Out-Null
+$EmailFile = Join-Path $CfgDir 'email'
+$Email = $env:CLOVER_EMAIL
+if (-not $Email -and (Test-Path $EmailFile)) { $Email = (Get-Content $EmailFile -Raw).Trim() }
+if (ValidEmail $Email) { Ok "použijem $Email" }
+else {
+  do {
+    $Email = "$(Read-Host '   E-mail')".Trim().ToLower()
+    if (-not (ValidEmail $Email)) { Write-Host '   Toto nevyzerá ako e-mail. Skús ešte raz.' -ForegroundColor DarkGray }
+  } until (ValidEmail $Email)
+  Ok 'ďakujem'
+}
+Set-Content $EmailFile $Email -Encoding ASCII
+# od prvej inštalácie sa ráta 48 h, počas ktorých Clover ukazuje odkaz na kávu
+$InstalledAt = Join-Path $CfgDir 'installed_at'
+if (-not (Test-Path $InstalledAt)) { Set-Content $InstalledAt ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -Encoding ASCII }
 
 Say '1/4 Git'
 Why 'Git je stroj času na súbory. Claude ho potrebuje, aby vedel, čo zmenil, a vedel to vrátiť.',
@@ -111,20 +136,29 @@ if (-not (Test-Path "$ClaudeDir\settings.json")) { Fetch 'claude/settings.json' 
 $Set = "$ClaudeDir\settings.json"
 $json = Get-Content $Set -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $json) { $json = [pscustomobject]@{} }
+function HookCmd($script, $arg = '') {
+  # keď súbor chýba, hook potichu skončí namiesto chyby v každej odpovedi
+  $run = if ($arg) { "bash `"`$f`" $arg" } else { 'bash "$f"' }
+  'f="$HOME/.config/clover/' + $script + '"; [ -f "$f" ] && ' + $run + '; exit 0'
+}
 $Want = [ordered]@{
-  SessionStart     = 'bash "$HOME/.config/clover/remember.sh"'
-  Notification     = 'bash "$HOME/.config/clover/notify.sh" wait'
-  Stop             = 'bash "$HOME/.config/clover/notify.sh" done'
-  UserPromptSubmit = 'bash "$HOME/.config/clover/notify.sh" clear'
+  SessionStart     = HookCmd 'remember.sh'
+  Notification     = HookCmd 'notify.sh' 'wait'
+  Stop             = HookCmd 'notify.sh' 'done'
+  UserPromptSubmit = HookCmd 'notify.sh' 'clear'
 }
 if (-not $json.hooks) { $json | Add-Member hooks ([pscustomobject]@{}) }
 $Changed = $false
 foreach ($ev in $Want.Keys) {
-  $cur = @($json.hooks.$ev)
-  if (-not ($cur | Where-Object { $_.hooks | Where-Object { $_.command -eq $Want[$ev] } })) {
+  $cur = @($json.hooks.$ev | Where-Object { $_ })
+  $mine = @($cur | Where-Object { ($_ | ConvertTo-Json -Depth 10) -match '\.config/clover/' })
+  $cmds = @($mine | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+  if ($cmds.Count -ne 1 -or $cmds[0] -ne $Want[$ev]) {
     if (-not $Changed) { Copy-Item $Set "$Set.bak-$Stamp"; $Changed = $true }
+    # staré alebo zdvojené Clover hooky preč, zvyšok nechaj
+    $keep = @($cur | Where-Object { -not (($_ | ConvertTo-Json -Depth 10) -match '\.config/clover/') })
     $entry = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = $Want[$ev] }) }
-    if ($json.hooks.PSObject.Properties[$ev]) { $json.hooks.$ev = @($cur | Where-Object { $_ }) + $entry }
+    if ($json.hooks.PSObject.Properties[$ev]) { $json.hooks.$ev = @($keep) + $entry }
     else { $json.hooks | Add-Member $ev @($entry) }
   }
 }
@@ -136,6 +170,15 @@ New-Item -ItemType Directory -Force $Skill | Out-Null
 Fetch 'claude/skills/vitaj/SKILL.md' (Join-Path $Skill 'SKILL.md')
 Ok 'Clover je na ploche aj v Štart menu'
 
+# zápis inštalácie; keď server nedostupný, nevadí, Clover funguje aj tak
+$Paid = $false
+try {
+  $r = Invoke-RestMethod -Method Post -Uri $Api -ContentType 'application/json' -TimeoutSec 8 `
+    -Body (@{ email = $Email; os = 'win'; version = $CloverVer } | ConvertTo-Json)
+  $Paid = [bool]$r.paid
+} catch {}
+if ($Paid) { Set-Content (Join-Path $CfgDir 'paid') ([DateTime]::UtcNow.ToString('s') + 'Z') -Encoding ASCII }
+
 Write-Host ''
 Write-Host '   🍀  Hotovo. Clover sa práve otvára.' -ForegroundColor Green
 Write-Host ''
@@ -146,4 +189,5 @@ Write-Host '   → Ťahák skratiek je vždy na Ctrl+Shift+/.'
 Write-Host ''
 Write-Host '   Aktualizácia = spustiť tento istý príkaz znova.' -ForegroundColor DarkGray
 Write-Host ''
+if ($Paid) { Write-Host '   ☕ Vďaka za kávu. Clover je tvoj, aj so všetkými aktualizáciami.'; Write-Host '' }
 Start-Process $Gui -ArgumentList "--config-file `"$Lua`""
