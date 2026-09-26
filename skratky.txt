@@ -1,0 +1,41 @@
+
+  🍀  CLOVER — SKRATKY                 (zavrieš ľubovoľnou klávesou)
+
+  PÍSANIE                        Mac                 Windows
+  ─────────────────────────────────────────────────────────────
+  Nový riadok                    Shift+Enter         Shift+Enter
+  O slovo doľava / doprava       Option+← / →        Ctrl+← / →
+  Začiatok / koniec riadku       Cmd+← / →           Home / End
+  Zmazať slovo                   Option+⌫            Ctrl+⌫
+  Zmazať po začiatok riadku      Cmd+⌫               Ctrl+U
+  Zmazať po koniec riadku        Ctrl+K              Ctrl+K
+  Zmazať celý text               Esc Esc             Esc Esc
+
+  KOPÍROVANIE
+  ─────────────────────────────────────────────────────────────
+  Kopírovať                      označ myšou (hotovo) alebo Cmd+C / Ctrl+C
+  Slovo / celý riadok            dvojklik / trojklik
+  Vložiť                         Cmd+V / Ctrl+V alebo pravé tlačidlo
+  Vložiť obrázok do Clauda       Ctrl+V              Alt+V
+  Otvoriť odkaz                  klik na odkaz
+
+  PANELY
+  ─────────────────────────────────────────────────────────────
+  Nový Claude vpravo / dole      Cmd+D / Cmd+E       Ctrl+Shift+D / E
+  Obyčajný terminál              Cmd+Shift+N         Ctrl+Shift+N
+  Zväčšiť / vrátiť panel         Cmd+Enter           Ctrl+Shift+Enter
+  Presun medzi panelmi           Cmd+Alt+šípky       Ctrl+Shift+Alt+šípky
+  Zavrieť panel                  Cmd+W               Ctrl+Shift+W
+  Hľadať v texte                 Cmd+F               Ctrl+Shift+F
+
+  CLAUDE
+  ─────────────────────────────────────────────────────────────
+  Zastaviť Clauda                Esc
+  Vrátiť sa k starej konverzácii /resume
+  Vyčistiť kontext               /clear
+  Zavrieť Clover                 Cmd+Q — pri ďalšom štarte sa rozrobené
+                                 sessions obnovia v tých istých paneloch
+  Panel nabudúce načisto         /exit
+  Väčšie / menšie písmo          Cmd + plus / mínus  (Ctrl na Windows)
+  Tento ťahák                    Cmd+/               Ctrl+Shift+/
+
