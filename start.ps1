@@ -12,7 +12,7 @@ function Live($id) {
 }
 if ($Slot -and (Test-Path $f) -and $env:CLOVER_RESTORE -ne '0') {
   $id, $dir = (Get-Content $f -Raw).Trim() -split ' ', 2
-  if ($id -and (Test-Path "$HOME\.claude\projects\*\$id.jsonl") -and -not (Live $id)) {
+  if ($id -match '^[0-9a-f-]{36}$' -and (Test-Path "$HOME\.claude\projects\*\$id.jsonl") -and -not (Live $id)) {
     if ($dir) { Set-Location ($dir -replace '\\\\', '\') }
     claude --resume $id @args
     Remove-Item $f -ErrorAction SilentlyContinue

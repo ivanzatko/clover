@@ -3,6 +3,7 @@
 # ale len ak naozaj existuje (má správy) a nebeží práve v inom okne.
 # Použitie: start.sh <slot> [parametre pre claude]
 slot="$1"; shift
+export CLOVER_PANE_PID=$$   # remember.sh podľa toho spozná Clauda priamo v paneli (nie vnoreného)
 f="$HOME/.config/clover/state/slot-$slot"
 
 # úplne prvý štart: uvítanie v paneli 1 (clover.lua vtedy otvorí len jeden panel)
@@ -21,7 +22,7 @@ live() { # beží session $1 v nejakom živom procese?
 
 if [ -n "$slot" ] && [ -s "$f" ] && [ "${CLOVER_RESTORE:-1}" = 1 ]; then
   read -r id dir < "$f"
-  if [ -n "$id" ] && ls "$HOME"/.claude/projects/*/"$id".jsonl >/dev/null 2>&1 && ! live "$id"; then
+  if [[ "$id" =~ ^[0-9a-f-]{36}$ ]] && ls "$HOME"/.claude/projects/*/"$id".jsonl >/dev/null 2>&1 && ! live "$id"; then
     cd "$dir" 2>/dev/null
     claude --resume "$id" "$@"
     rm -f "$f"

@@ -109,12 +109,14 @@ if (-not (Test-Path "$ClaudeDir\settings.json")) { Fetch 'claude/settings.json' 
 # hook, vďaka ktorému Clover po reštarte obnoví rozrobené sessions
 $Set = "$ClaudeDir\settings.json"
 $json = Get-Content $Set -Raw -Encoding UTF8 | ConvertFrom-Json
+if (-not $json) { $json = [pscustomobject]@{} }
 if (-not ($json | ConvertTo-Json -Depth 30 | Select-String 'clover/remember.sh' -Quiet)) {
   Copy-Item $Set "$Set.bak-$Stamp"
   if (-not $json.hooks) { $json | Add-Member hooks ([pscustomobject]@{}) }
   if (-not $json.hooks.SessionStart) { $json.hooks | Add-Member SessionStart @() }
   $json.hooks.SessionStart = @($json.hooks.SessionStart) + [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = 'bash "$HOME/.config/clover/remember.sh"' }) }
-  $json | ConvertTo-Json -Depth 30 | Set-Content $Set -Encoding UTF8
+  # bez BOM: PowerShell 5 by s -Encoding UTF8 pridal BOM a Claude by settings.json nemusel prečítať
+  [IO.File]::WriteAllText($Set, ($json | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
 }
 
 $Skill = Join-Path $ClaudeDir 'skills\vitaj'

@@ -8,8 +8,9 @@ set -euo pipefail
 KIT_URL="${KIT_URL:-https://raw.githubusercontent.com/ivanzatko/clover/main}"
 WEZ_VER="20240203-110809-5046fc22"
 WEZ_ZIP="https://github.com/wezterm/wezterm/releases/download/$WEZ_VER/WezTerm-macos-$WEZ_VER.zip"
+# kontrolný súčet z oficiálneho releasu (…zip.sha256), pri novej verzii WezTermu aktualizovať
+WEZ_SHA256="e77388cad55f2e9da95a220a89206a6c58f865874a629b7c3ea3c162f5692224"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
-STAMP="$(date +%Y%m%d-%H%M%S)"
 APP=/Applications/Clover.app
 CFG_DIR="$HOME/.config/clover"
 # bez stien textu z Homebrew
@@ -113,6 +114,11 @@ elif pgrep -f "$APP/Contents/MacOS" >/dev/null 2>&1; then
 else
   TMP="$(mktemp -d)"
   echo "   Sťahujem ~100 MB. Pri pomalom internete je toto chvíľa na pretiahnutie chrbta."; curl -fL --progress-bar "$WEZ_ZIP" -o "$TMP/wez.zip"
+  if [ "$(shasum -a 256 "$TMP/wez.zip" | cut -d' ' -f1)" != "$WEZ_SHA256" ]; then
+    echo "   Stiahnutý súbor nesedí s kontrolným súčtom. Radšej končím, nič som nenainštaloval."
+    echo "   Skús to o chvíľu znova (mohol sa len pokaziť download)."
+    rm -rf "$TMP"; exit 1
+  fi
   ditto -x -k "$TMP/wez.zip" "$TMP"
   SRC="$(find "$TMP" -maxdepth 2 -name WezTerm.app -type d | head -1)"
   rm -rf "$APP"
@@ -136,13 +142,10 @@ else
 fi
 
 say "5/5 Drobnosti"
-why "Vypnem hlášky „Last login“ a „You have new mail“, ktoré nikoho nezaujímajú." \
+why "Vypnem hlášku „Last login“, ktorá nikoho nezaujíma." \
     "Claudovi založím súbor, kam si zapíše, kto si (ak ho ešte nemáš)," \
     "a pridám sprievodcu /vitaj, ktorý ťa prevedie prvými krokmi."
 touch ~/.hushlogin                                   # žiadne „Last login…“
-if crontab -l >/dev/null 2>&1 && ! crontab -l | grep -q '^MAILTO='; then
-  (echo 'MAILTO=""'; crontab -l) | crontab -         # žiadne „You have new mail“
-fi
 mkdir -p ~/.claude
 [ -f ~/.claude/CLAUDE.md ] || fetch claude/CLAUDE.md ~/.claude/CLAUDE.md
 [ -f ~/.claude/settings.json ] || fetch claude/settings.json ~/.claude/settings.json

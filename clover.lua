@@ -43,7 +43,8 @@ local function claude_cmd(slot)
   if is_windows then
     local script = table.concat({ home, '.config', 'clover', 'start.ps1' }, sep)
     local pre = RESTORE and '' or "$env:CLOVER_RESTORE='0'; "
-    return { 'powershell.exe', '-NoLogo', '-NoExit', '-Command', pre .. "& '" .. script .. "' " .. s .. args }
+    -- ExecutionPolicy Bypass len pre tento proces: predvolené Restricted by start.ps1 zablokovalo
+    return { 'powershell.exe', '-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', pre .. "& '" .. script:gsub("'", "''") .. "' " .. s .. args }
   end
   local sh = os.getenv('SHELL') or '/bin/zsh'
   -- unset: ak WezTerm spustil iný Claude, zdedí CLAUDE_CODE_CHILD_SESSION a pod.
@@ -97,6 +98,20 @@ wezterm.on('format-window-title', function() return 'Clover' end)
 config.color_scheme = user.color_scheme or 'Tokyo Night'
 config.font = wezterm.font_with_fallback { 'JetBrains Mono' } -- je súčasťou WezTermu
 config.font_size = user.font_size or (is_windows and 10 or 12) -- Cmd/Ctrl + plus/mínus mení naživo
+-- Mac: písmo podľa obrazovky, aby sa do panelov zmestilo rovnako textu všade.
+-- Základ = 12 na FullHD (1920 bodov na šírku); Retina MacBook (~1500 bodov) tak dostane ~9,5.
+-- Kto si nastaví font_size v ~/.clover.lua, tomu do toho nezasahujeme.
+if not user.font_size and not is_windows then
+  wezterm.on('window-config-reloaded', function(window)
+    local ok, s = pcall(function() return wezterm.gui.screens().active end)
+    if not ok or not s or not s.width then return end
+    local points = s.width * 72 / (s.effective_dpi or 72)
+    local size = math.floor(12 * points / 1920 * 2 + 0.5) / 2
+    size = math.max(9, math.min(14, size))
+    local o = window:get_config_overrides() or {}
+    if o.font_size ~= size then o.font_size = size; window:set_config_overrides(o) end
+  end)
+end
 config.window_decorations = 'INTEGRATED_BUTTONS|RESIZE'
 config.hide_tab_bar_if_only_one_tab = true
 config.window_padding = { left = 8, right = 8, top = 8, bottom = 4 }
@@ -108,7 +123,7 @@ config.adjust_window_size_when_changing_font_size = false
 -- Ťahák: súbor skratky.txt vedľa konfigu, zavrie sa ľubovoľnou klávesou
 local cheat = table.concat({ home, '.config', 'clover', 'skratky.txt' }, sep)
 local cheat_cmd = is_windows
-  and { 'powershell.exe', '-NoLogo', '-Command', "Get-Content -Encoding UTF8 '" .. cheat .. "'; [void][Console]::ReadKey($true)" }
+  and { 'powershell.exe', '-NoLogo', '-Command', "Get-Content -Encoding UTF8 '" .. cheat:gsub("'", "''") .. "'; [void][Console]::ReadKey($true)" }
   or { '/bin/bash', '-c', "cat '" .. cheat .. "'; read -rsn1" }
 
 -- Skratky (Mac: Cmd, Windows: Ctrl+Shift)
@@ -162,6 +177,11 @@ else
   send('Backspace', 'CMD', '\x15')     -- Cmd+⌫ zmazať po začiatok riadku
 end
 
+-- Odkazy na klik otvárame len webové a mailové. Iné schémy (file://, ssh://, vlastné URL appiek)
+-- by jedným klikom mohli spustiť niečo nečakané, napr. z výpisu cudzej webstránky.
+wezterm.on('open-uri', function(_, _, uri)
+  if not (uri:match('^https?://') or uri:match('^mailto:')) then return false end
+end)
 -- Myš: označenie = hneď skopírované, pravé tlačidlo = vložiť
 config.mouse_bindings = {
   { event = { Up = { streak = 1, button = 'Left' } }, mods = 'NONE',

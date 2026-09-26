@@ -31,6 +31,23 @@ Existujúce súbory neprepisuje (`~/.claude/CLAUDE.md`, `settings.json`), `setti
 
 Kto Clover už mal, uvítanie neuvidí (inštalátor vytvorí `~/.config/clover/state/welcomed`).
 
+## Odinštalovanie
+
+Claude Code, Homebrew, git a tvoje konverzácie ostanú. Zmizne appka, nastavenia Cloveru a hook.
+
+**Mac:** `curl -fsSL https://raw.githubusercontent.com/ivanzatko/clover/main/uninstall-mac.sh | bash`
+
+**Windows:** `irm https://raw.githubusercontent.com/ivanzatko/clover/main/uninstall-win.ps1 | iex`
+
+## Bezpečnosť
+
+- WezTerm na Macu sa sťahuje z oficiálneho releasu a overuje sa kontrolným súčtom (SHA-256).
+  Na Windows ho inštaluje winget, ktorý robí to isté.
+- Na klik sa otvárajú len webové odkazy (`http`, `https`) a `mailto`. Iné schémy nie.
+- `~/.claude/settings.json` sa pred úpravou zálohuje a mení sa v ňom len pridanie jedného hooku.
+- Zákazy v šablóne `claude/settings.json` sú základná poistka, nie ochrana. Dôležité je čítať,
+  čo Claude žiada, a keď to nesedí, stlačiť Esc.
+
 ## Skratky
 
 | Čo | Mac | Windows |
@@ -52,7 +69,9 @@ aspoň jednu správu a nebeží práve v inom okne. Stará sa o to hook `remembe
 
 ## Osobné nastavenia
 
-`~/.clover.lua`: priečinok, počet panelov (1/2/4), obnova sessions, font (predvolene 12), farby.
+`~/.clover.lua`: priečinok, počet panelov (1/2/4), obnova sessions, písmo, farby.
+Písmo sa na Macu nastaví podľa obrazovky (12 na FullHD, Retina MacBook ~9,5). Ak si nastavíš
+`font_size`, platí tvoje.
 
 ## Súbory
 

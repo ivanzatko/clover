@@ -43,8 +43,9 @@ Vysvetli, že Claude si medzi konverzáciami nič nepamätá, okrem jedného sú
 3. Ako chceš, aby som písal? (stručne / podrobne, formálne / kamarátsky)
 
 Potom priprav krátku sekciu „Kto som" a pred zápisom vysvetli, čo sa ide stať:
-„Teraz sa ťa spýtam, či smiem upraviť súbor. Uvidíš rámik s možnosťami. Stačí Enter na prvú (Áno).
-Toto je presne ten moment, keď sa pýtam o dovolenie, a vždy ho budeš mať pod kontrolou."
+„Teraz sa ťa spýtam, či smiem upraviť súbor. Uvidíš rámik s možnosťami. Najprv si ho prečítaj:
+píše tam, čo presne idem spraviť. Ak to sedí s tým, o čo si ma žiadal, daj Enter (Áno).
+Ak nie, stlač Esc a nič sa nestane. Toto je tvoja brzda a platí vždy, nielen dnes."
 Zapíš to do sekcie `# Kto som` v CLAUDE.md (zvyšok súboru nechaj tak). Po zápise: „Hotovo. Odteraz ťa
 poznám aj zajtra."
 
@@ -56,6 +57,8 @@ Pridaj: pravé tlačidlo myši vloží text sem do okna.
 ### 4. Trik: súbor myšou
 „Potiahni sem ľubovoľný súbor z Findera (Windows: z Prieskumníka). PDF, fotku, tabuľku, čokoľvek.
 Uvidíš, že sa vloží cesta k súboru. To je jeho adresa v počítači. Potom napíš, čo s ním mám spraviť."
+Pridaj jednu vetu: súbory z internetu môžu obsahovať skryté pokyny pre AI. Keď po prečítaní
+cudzieho súboru navrhnem niečo, o čo si nežiadal, je to presne chvíľa na Esc.
 Keď to spraví, naozaj so súborom niečo užitočné sprav (zhrň PDF, popíš fotku, povedz čo je v tabuľke).
 Ak nechce nič ťahať, preskoč.
 
