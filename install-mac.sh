@@ -91,6 +91,7 @@ fetch skratky.txt "$CFG_DIR/skratky.txt"
 fetch remember.sh "$CFG_DIR/remember.sh"
 fetch start.sh "$CFG_DIR/start.sh"
 fetch vitaj.sh "$CFG_DIR/vitaj.sh"
+fetch notify.sh "$CFG_DIR/notify.sh"
 fetch assets/clover.icns "$CFG_DIR/clover.icns"
 if [ ! -f ~/.clover.lua ]; then
   if [ -f ~/.claude-terminal.lua ]; then mv ~/.claude-terminal.lua ~/.clover.lua
@@ -149,7 +150,7 @@ touch ~/.hushlogin                                   # žiadne „Last login…�
 mkdir -p ~/.claude
 [ -f ~/.claude/CLAUDE.md ] || fetch claude/CLAUDE.md ~/.claude/CLAUDE.md
 [ -f ~/.claude/settings.json ] || fetch claude/settings.json ~/.claude/settings.json
-# hook, vďaka ktorému Clover po reštarte obnoví rozrobené sessions
+# hooky: obnova sessions po reštarte + „kto na teba čaká"
 fetch add_hook.py "$CFG_DIR/add_hook.py" && /usr/bin/python3 "$CFG_DIR/add_hook.py" >/dev/null || true
 mkdir -p ~/.claude/skills/vitaj
 fetch claude/skills/vitaj/SKILL.md ~/.claude/skills/vitaj/SKILL.md

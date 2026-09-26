@@ -73,6 +73,8 @@ local function pane_opts(slot, extra)
   return o
 end
 wezterm.on('gui-startup', function(cmd)
+  local okd, old = pcall(wezterm.read_dir, table.concat({ home, '.config', 'clover', 'state', 'wait' }, sep))
+  if okd then for _, f in ipairs(old) do os.remove(f) end end
   if cmd and cmd.args then
     local _, _, window = mux.spawn_window { cwd = WORKDIR, args = cmd.args }
     window:gui_window():maximize()
@@ -193,5 +195,70 @@ config.mouse_bindings = {
   { event = { Down = { streak = 1, button = 'Right' } }, mods = 'NONE',
     action = act.PasteFrom 'Clipboard' },
 }
+
+-- ── Kto na teba čaká ────────────────────────────────────────────────────────
+-- Hook notify.sh zapíše do state/wait/<pane id> „wait <čas>" (Claude čaká na povolenie
+-- alebo odpoveď) alebo „done <čas>" (dokončil). Tu to každú sekundu prečítame:
+-- ak sa na ten panel práve nepozeráš, príde notifikácia a hore sa ukáže lišta.
+-- Keď sa na panel pozrieš (alebo mu odpíšeš), stav zmizne.
+local WAIT_DIR = table.concat({ home, '.config', 'clover', 'state', 'wait' }, sep)
+config.status_update_interval = 1000
+config.use_fancy_tab_bar = false
+
+local function read_state(path)
+  local fh = io.open(path, 'r'); if not fh then return nil end
+  local line = fh:read('*l') or ''; fh:close()
+  return line:match('^(%a+) (%d+)')
+end
+
+local function where(info, tab)
+  local size, parts = tab:get_size(), {}
+  if info.width < size.cols - 2 then
+    table.insert(parts, info.left + info.width / 2 < size.cols / 2 and 'vľavo' or 'vpravo')
+  end
+  if info.height < size.rows - 2 then
+    table.insert(parts, info.top + info.height / 2 < size.rows / 2 and 'hore' or 'dole')
+  end
+  return table.concat(parts, ' ')             -- '' = jediný panel v okne
+end
+
+wezterm.on('update-status', function(window, pane)
+  local ok, files = pcall(wezterm.read_dir, WAIT_DIR)
+  if not ok then files = {} end
+  local tab = window:active_tab()
+  local infos = {}
+  for _, i in ipairs(tab:panes_with_info()) do infos[tostring(i.pane:pane_id())] = i end
+  local looking = window:is_focused() and tostring(pane:pane_id()) or nil
+  local items = {}
+  for _, f in ipairs(files) do
+    local id = f:match('([^/\\]+)$')
+    local state, stamp = read_state(f)
+    local alive = pcall(function() return mux.get_pane(tonumber(id)):pane_id() end)
+    if not state or not alive or id == looking then
+      os.remove(f)                                  -- panel neexistuje alebo sa naň pozeráš
+    elseif infos[id] then
+      local label = where(infos[id], tab)
+      local who = label == '' and 'Claude' or 'Claude ' .. label
+      local key = 'clover_seen_' .. id
+      if wezterm.GLOBAL[key] ~= stamp then
+        wezterm.GLOBAL[key] = stamp
+        window:toast_notification('Clover 🍀',
+          who .. (state == 'wait' and ' čaká na teba' or ' je hotový'),
+          nil, 6000)
+      end
+      local l = label == '' and 'Claude' or label
+      table.insert(items, (state == 'wait' and '⏳ ' .. l .. ' čaká' or '✓ ' .. l .. ' hotovo'))
+    end
+  end
+  local o = window:get_config_overrides() or {}
+  local show = #items > 0
+  if (o.hide_tab_bar_if_only_one_tab == false) ~= show then
+    o.hide_tab_bar_if_only_one_tab = not show
+    window:set_config_overrides(o)
+  end
+  window:set_right_status(show and wezterm.format {
+    { Foreground = { Color = '#e0af68' } }, { Text = table.concat(items, '   ·   ') .. '   ' },
+  } or '')
+end)
 
 return config

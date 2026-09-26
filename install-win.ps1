@@ -83,6 +83,7 @@ Fetch 'skratky.txt' (Join-Path $Cfg 'skratky.txt')
 Fetch 'remember.sh' (Join-Path $Cfg 'remember.sh')
 Fetch 'start.ps1' (Join-Path $Cfg 'start.ps1')
 Fetch 'vitaj.ps1' (Join-Path $Cfg 'vitaj.ps1')
+Fetch 'notify.sh' (Join-Path $Cfg 'notify.sh')
 # kto už Clover mal, uvítanie pre nováčikov neuvidí
 if ($Existing) {
   New-Item -ItemType Directory -Force (Join-Path $Cfg 'state') | Out-Null
@@ -106,18 +107,29 @@ $ClaudeDir = Join-Path $HOME '.claude'
 New-Item -ItemType Directory -Force $ClaudeDir | Out-Null
 if (-not (Test-Path "$ClaudeDir\CLAUDE.md")) { Fetch 'claude/CLAUDE.md' "$ClaudeDir\CLAUDE.md" }
 if (-not (Test-Path "$ClaudeDir\settings.json")) { Fetch 'claude/settings.json' "$ClaudeDir\settings.json" }
-# hook, vďaka ktorému Clover po reštarte obnoví rozrobené sessions
+# hooky: obnova sessions po reštarte + „kto na teba čaká" (bežia cez Git Bash)
 $Set = "$ClaudeDir\settings.json"
 $json = Get-Content $Set -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $json) { $json = [pscustomobject]@{} }
-if (-not ($json | ConvertTo-Json -Depth 30 | Select-String 'clover/remember.sh' -Quiet)) {
-  Copy-Item $Set "$Set.bak-$Stamp"
-  if (-not $json.hooks) { $json | Add-Member hooks ([pscustomobject]@{}) }
-  if (-not $json.hooks.SessionStart) { $json.hooks | Add-Member SessionStart @() }
-  $json.hooks.SessionStart = @($json.hooks.SessionStart) + [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = 'bash "$HOME/.config/clover/remember.sh"' }) }
-  # bez BOM: PowerShell 5 by s -Encoding UTF8 pridal BOM a Claude by settings.json nemusel prečítať
-  [IO.File]::WriteAllText($Set, ($json | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
+$Want = [ordered]@{
+  SessionStart     = 'bash "$HOME/.config/clover/remember.sh"'
+  Notification     = 'bash "$HOME/.config/clover/notify.sh" wait'
+  Stop             = 'bash "$HOME/.config/clover/notify.sh" done'
+  UserPromptSubmit = 'bash "$HOME/.config/clover/notify.sh" clear'
 }
+if (-not $json.hooks) { $json | Add-Member hooks ([pscustomobject]@{}) }
+$Changed = $false
+foreach ($ev in $Want.Keys) {
+  $cur = @($json.hooks.$ev)
+  if (-not ($cur | Where-Object { $_.hooks | Where-Object { $_.command -eq $Want[$ev] } })) {
+    if (-not $Changed) { Copy-Item $Set "$Set.bak-$Stamp"; $Changed = $true }
+    $entry = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = $Want[$ev] }) }
+    if ($json.hooks.PSObject.Properties[$ev]) { $json.hooks.$ev = @($cur | Where-Object { $_ }) + $entry }
+    else { $json.hooks | Add-Member $ev @($entry) }
+  }
+}
+# bez BOM: PowerShell 5 by s -Encoding UTF8 pridal BOM a Claude by settings.json nemusel prečítať
+if ($Changed) { [IO.File]::WriteAllText($Set, ($json | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false)) }
 
 $Skill = Join-Path $ClaudeDir 'skills\vitaj'
 New-Item -ItemType Directory -Force $Skill | Out-Null

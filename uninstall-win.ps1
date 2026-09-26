@@ -9,9 +9,11 @@ $Set = "$HOME\.claude\settings.json"
 if (Test-Path $Set) {
   $json = Get-Content $Set -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $json) { $json = [pscustomobject]@{} }
-  if ($json.hooks -and $json.hooks.SessionStart) {
-    $json.hooks.SessionStart = @($json.hooks.SessionStart | Where-Object { -not (($_ | ConvertTo-Json -Depth 10) -match 'clover/remember.sh') })
-    # bez BOM: PowerShell 5 by s -Encoding UTF8 pridal BOM a Claude by settings.json nemusel prečítať
+  if ($json -and $json.hooks) {
+    foreach ($ev in @($json.hooks.PSObject.Properties.Name)) {
+      $keep = @($json.hooks.$ev | Where-Object { -not (($_ | ConvertTo-Json -Depth 10) -match '\.config/clover/') })
+      if ($keep.Count) { $json.hooks.$ev = $keep } else { $json.hooks.PSObject.Properties.Remove($ev) }
+    }
     [IO.File]::WriteAllText($Set, ($json | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
   }
 }

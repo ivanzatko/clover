@@ -8,18 +8,22 @@ fi
 rm -rf /Applications/Clover.app "$HOME/.config/clover" "$HOME/.claude/skills/vitaj"
 [ -f "$HOME/.clover.lua" ] && mv "$HOME/.clover.lua" "$HOME/.clover.lua.bak-$(date +%Y%m%d-%H%M%S)"
 rm -f "$HOME/.claude-terminal.lua"
-# hook z ~/.claude/settings.json (zvyšok nastavení ostane)
+# Clover hooky z ~/.claude/settings.json (zvyšok nastavení ostane)
 /usr/bin/python3 - <<'PY'
 import json, os
 p = os.path.expanduser('~/.claude/settings.json')
 try: d = json.load(open(p, encoding='utf-8'))
 except Exception: raise SystemExit
-ss = d.get('hooks', {}).get('SessionStart', [])
-keep = [h for h in ss if 'clover/remember.sh' not in json.dumps(h)]
-if keep != ss:
-    d['hooks']['SessionStart'] = keep
-    if not keep: del d['hooks']['SessionStart']
-    if not d['hooks']: del d['hooks']
+hooks = d.get('hooks', {})
+changed = False
+for ev in list(hooks):
+    keep = [h for h in hooks[ev] if '.config/clover/' not in json.dumps(h)]
+    if keep != hooks[ev]:
+        changed = True
+        if keep: hooks[ev] = keep
+        else: del hooks[ev]
+if changed:
+    if not hooks: d.pop('hooks', None)
     json.dump(d, open(p, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
 PY
 echo "${G}🍀 Clover je preč.${R} Claude Code a tvoje konverzácie ostali."

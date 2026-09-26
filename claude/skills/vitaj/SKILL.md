@@ -73,6 +73,10 @@ Potom v skratke, každé na jeden riadok:
 - **/resume**: návrat k staršej konverzácii
 - ťahák všetkých skratiek (Cmd+/ alebo Ctrl+Shift+/)
 
+Povedz aj o notifikáciách: keď Claude v inom paneli čaká na teba alebo dokončí prácu, Clover
+pošle notifikáciu a hore sa ukáže lišta („⏳ vpravo hore čaká"). Takže nemusíš panely strážiť.
+Na Macu sa systém pri prvej notifikácii spýta, či ich Clover smie posielať, nech dá Povoliť.
+
 A upokoj: keď Clover zavrieš alebo reštartuješ počítač, rozrobené konverzácie sa vrátia do svojich
 panelov. Nič sa nestratí.
 

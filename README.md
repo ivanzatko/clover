@@ -60,6 +60,14 @@ Claude Code, Homebrew, git a tvoje konverzácie ostanú. Zmizne appka, nastaveni
 | Nový riadok v Claudovi | Shift+Enter | Shift+Enter |
 | **Ťahák všetkých skratiek** | **Cmd+/** | **Ctrl+Shift+/** |
 
+## Kto na teba čaká
+
+Keď Claude v niektorom paneli čaká na tvoje povolenie alebo dokončí prácu a ty sa práve pozeráš
+inam, príde notifikácia („Claude vpravo hore čaká na teba") a hore sa ukáže lišta so stavom.
+Keď sa na panel pozrieš alebo mu odpíšeš, zmizne. Robia to hooky `Notification`, `Stop`
+a `UserPromptSubmit` (`notify.sh`) a `update-status` v `clover.lua`.
+Na Macu sa pri prvej notifikácii systém spýta, či ich Clover smie posielať.
+
 ## Obnova sessions
 
 Zavrieš Clover → pri ďalšom štarte sa v každom z 4 panelov obnoví session, ktorá v ňom bežala.
@@ -78,6 +86,7 @@ Písmo sa na Macu nastaví podľa obrazovky (12 na FullHD, Retina MacBook ~9,5).
 - `clover.lua` → `~/.config/clover/clover.lua` (Mac: načíta ho `/Applications/Clover.app`, Windows: skratka Clover)
 - `clover.example.lua` → `~/.clover.lua`
 - `claude/CLAUDE.md`, `claude/settings.json` → `~/.claude/` (len ak chýbajú)
+- `notify.sh` → hook pre „kto na teba čaká"
 - `vitaj.sh` / `vitaj.ps1` → uvítanie pri prvom štarte
 - `claude/skills/vitaj/` → `~/.claude/skills/vitaj/` (sprievodca `/vitaj`, pri inštalácii sa aktualizuje)
 - `assets/` ikona (`make_icon.py` ju vygeneruje)
