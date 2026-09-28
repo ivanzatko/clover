@@ -26,8 +26,9 @@ done_() { printf "   ${G}✓${R} %s\n" "${1:-hotovo}"; }
 TTY=""; { exec 3</dev/tty; } 2>/dev/null && TTY=1
 pause() { [ -n "$TTY" ] && read -r -u 3 _ || true; }
 fetch() { # fetch <súbor> <cieľ> — lokálna kópia, inak stiahnuť
-  if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$1" ]; then cp "$SCRIPT_DIR/$1" "$2"
-  else curl -fsSL "$KIT_URL/$1" -o "$2"; fi
+  # cez .tmp + mv: bežiace panely čítajú starý start.sh ďalej, prepis na mieste by ich zhodil
+  if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$1" ]; then cp "$SCRIPT_DIR/$1" "$2.tmp"
+  else curl -fsSL "$KIT_URL/$1" -o "$2.tmp"; fi && mv -f "$2.tmp" "$2"
 }
 add_line() { grep -qsF "$1" "$2" || echo "$1" >> "$2"; }
 
