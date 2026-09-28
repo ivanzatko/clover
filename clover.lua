@@ -239,6 +239,15 @@ config.mouse_bindings = {
   { event = { Down = { streak = 1, button = 'Right' } }, mods = 'NONE',
     action = act.PasteFrom 'Clipboard' },
 }
+-- Claude v režime fullscreen (/tui) si myš berie sám, obyčajný klik mu padne a odkaz sa neotvorí.
+-- Cmd+klik (Windows: Ctrl+klik) otvorí odkaz vždy, aj keď appka myš zachytáva.
+local link_mod = is_windows and 'CTRL' or 'SUPER'
+for _, rep in ipairs { false, true } do
+  table.insert(config.mouse_bindings, { event = { Down = { streak = 1, button = 'Left' } },
+    mods = link_mod, mouse_reporting = rep, action = act.Nop })
+  table.insert(config.mouse_bindings, { event = { Up = { streak = 1, button = 'Left' } },
+    mods = link_mod, mouse_reporting = rep, action = act.OpenLinkAtMouseCursor })
+end
 
 -- ── Kto na teba čaká ────────────────────────────────────────────────────────
 -- Hook notify.sh zapíše do state/wait/<pane id> „wait <čas>" (Claude čaká na povolenie

@@ -17,7 +17,7 @@
   Slovo / celý riadok            dvojklik / trojklik
   Vložiť                         Cmd+V / Ctrl+V alebo pravé tlačidlo
   Vložiť obrázok do Clauda       Ctrl+V              Alt+V
-  Otvoriť odkaz                  klik na odkaz
+  Otvoriť odkaz                  klik (vo fullscreene Cmd+klik / Ctrl+klik)
 
   PANELY
   ─────────────────────────────────────────────────────────────
