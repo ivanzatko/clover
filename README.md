@@ -2,7 +2,7 @@
 
 Terminál, ktorý sa otvorí rovno so 4 panelmi Claude Code (2×2), bez medzikrokov.
 Mac aj Windows. Postavené na [WezTerm](https://github.com/wezterm/wezterm) (MIT licencia, © Wez Furlong).
-Aktualizácia = spustiť inštalačný príkaz znova.
+O novej verzii dá Clover vedieť sám, aktualizuje sa cez Cmd+Shift+U (Windows Ctrl+Shift+U).
 
 ## Inštalácia (jeden príkaz)
 
@@ -41,6 +41,16 @@ alebo po 48 hodinách to zmizne a už sa nevráti. Nič sa nezamyká.
    má štyri panely hneď.
 
 Kto Clover už mal, uvítanie neuvidí (inštalátor vytvorí `~/.config/clover/state/welcomed`).
+
+## Aktualizácie
+
+Clover si raz za 6 hodín stiahne súbor [`VERSION`](VERSION) (1. riadok verzia, ďalšie novinky)
+a porovná ho s `~/.config/clover/version`. Keď je na GitHube novšia verzia, príde notifikácia
+a hore sa ukáže lišta. **Samo sa nič neinštaluje.** Aktualizáciu spustíš Cmd+Shift+U
+(Windows Ctrl+Shift+U): v novom tabe beží ten istý inštalátor v tichom režime (`CLOVER_UPDATE=1`),
+prepíše konfig a skripty a nastavenia sa načítajú bez reštartu. Rozrobené konverzácie ostanú.
+
+Ručne to ide aj tak, že spustíš inštalačný príkaz znova.
 
 ## Odinštalovanie
 

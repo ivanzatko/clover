@@ -38,5 +38,6 @@
   Panel nabudúce načisto         /exit
   Väčšie / menšie písmo          Cmd + plus / mínus  (Ctrl na Windows)
   Tento ťahák                    Cmd+/               Ctrl+Shift+/
+  Aktualizovať Clover            Cmd+Shift+U         Ctrl+Shift+U
   Kúpiť Ivanovi kávu ☕          Cmd+Shift+K         Ctrl+Shift+K
 

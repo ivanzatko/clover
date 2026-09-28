@@ -1,12 +1,14 @@
 # Clover — inštalácia pre Windows
 # Použitie (PowerShell): irm <KIT_URL>/install-win.ps1 | iex
 # Bezpečné spustiť opakovane: čo už máš, preskočí; tvoje súbory neprepíše (robí zálohu).
+# Aktualizácia = spustiť znova (alebo Ctrl+Shift+U v Cloveri, keď ponúkne novú verziu).
 $ErrorActionPreference = 'Stop'
 
 $KitUrl = if ($env:KIT_URL) { $env:KIT_URL } else { 'https://raw.githubusercontent.com/ivanzatko/clover/main' }
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { '' }
 $Stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$CloverVer = '2026.09.27'
+$CloverVer = '?'                    # skutočná verzia príde zo súboru VERSION v kite
+$Update = [bool]$env:CLOVER_UPDATE   # aktualizácia spustená z Cloveru (Ctrl+Shift+U): bez úvodu a otázok
 $Api = if ($env:CLOVER_API) { $env:CLOVER_API } else { 'https://www.ivanzatko.com/api/clover/install' }
 
 function Say($t) { Write-Host "`n🍀 $t" -ForegroundColor Green }
@@ -29,6 +31,12 @@ if (-not (Has winget)) {
 
 $Existing = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'Clover.lnk')
 
+if ($Update) {
+Write-Host ''
+Write-Host '   🍀  Clover · aktualizácia' -ForegroundColor Green
+Write-Host ''
+Write-Host '   Sťahujem novú verziu. Rozrobené konverzácie nechávam tak, ako sú.'
+} else {
 Clear-Host
 Write-Host ''
 Write-Host '   🍀  Clover · inštalácia' -ForegroundColor Green
@@ -48,6 +56,7 @@ Write-Host ''
 Write-Host '   Čo už máš, preskočím. Ak toto spúšťaš znova, je to aktualizácia.' -ForegroundColor DarkGray
 Write-Host ''
 Read-Host '   Enter = ideme · Ctrl+C = radšej nie' | Out-Null
+}
 
 # e-mail: pri aktualizácii si ho pamätáme, pri prvej inštalácii sa spýtame
 Say 'Najprv tvoj e-mail'
@@ -60,6 +69,7 @@ $EmailFile = Join-Path $CfgDir 'email'
 $Email = $env:CLOVER_EMAIL
 if (-not $Email -and (Test-Path $EmailFile)) { $Email = (Get-Content $EmailFile -Raw).Trim() }
 if (ValidEmail $Email) { Ok "použijem $Email" }
+elseif ($Update) { $Email = ''; Ok 'bez e-mailu' }
 else {
   do {
     $Email = "$(Read-Host '   E-mail')".Trim().ToLower()
@@ -67,7 +77,7 @@ else {
   } until (ValidEmail $Email)
   Ok 'ďakujem'
 }
-Set-Content $EmailFile $Email -Encoding ASCII
+if (ValidEmail $Email) { Set-Content $EmailFile $Email -Encoding ASCII }
 # od prvej inštalácie sa ráta 48 h, počas ktorých Clover ukazuje odkaz na kávu
 $InstalledAt = Join-Path $CfgDir 'installed_at'
 if (-not (Test-Path $InstalledAt)) { Set-Content $InstalledAt ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -Encoding ASCII }
@@ -169,15 +179,30 @@ $Skill = Join-Path $ClaudeDir 'skills\vitaj'
 New-Item -ItemType Directory -Force $Skill | Out-Null
 Fetch 'claude/skills/vitaj/SKILL.md' (Join-Path $Skill 'SKILL.md')
 Ok 'Clover je na ploche aj v Štart menu'
+# verzia až na konci: keď sa niečo vyššie pokazí, Clover bude aktualizáciu ponúkať ďalej
+$VerFile = Join-Path $Cfg 'version'
+Fetch 'VERSION' $VerFile
+$CloverVer = (Get-Content $VerFile -Encoding UTF8 | Select-Object -First 1).Trim()
 
 # zápis inštalácie; keď server nedostupný, nevadí, Clover funguje aj tak
 $Paid = $false
-try {
+if (ValidEmail $Email) { try {
   $r = Invoke-RestMethod -Method Post -Uri $Api -ContentType 'application/json' -TimeoutSec 8 `
     -Body (@{ email = $Email; os = 'win'; version = $CloverVer } | ConvertTo-Json)
   $Paid = [bool]$r.paid
-} catch {}
+} catch {} }
 if ($Paid) { Set-Content (Join-Path $CfgDir 'paid') ([DateTime]::UtcNow.ToString('s') + 'Z') -Encoding ASCII }
+
+if ($Update) {
+  Write-Host ''
+  Write-Host "   🍀  Hotovo. Clover je aktualizovaný na verziu $CloverVer." -ForegroundColor Green
+  $Notes = @(Get-Content $VerFile -Encoding UTF8 | Select-Object -Skip 1 | Where-Object { $_.Trim() })
+  if ($Notes.Count) { Write-Host ''; Write-Host '   Čo je nové' -ForegroundColor White; $Notes | ForEach-Object { Write-Host "   · $_" } }
+  Write-Host ''
+  Write-Host '   Nastavenia sa načítali samé, nič nereštartuj.'
+  Write-Host '   Tento tab zavrieš ľubovoľnou klávesou.' -ForegroundColor DarkGray
+  Write-Host ''
+} else {
 
 Write-Host ''
 Write-Host '   🍀  Hotovo. Clover sa práve otvára.' -ForegroundColor Green
@@ -187,7 +212,8 @@ Write-Host '   → Clover ťa privíta a vysvetlí prihlásenie do Clauda (robí
 Write-Host '   → Potom napíš /vitaj. Päť minút a budeš vedieť všetko podstatné.'
 Write-Host '   → Ťahák skratiek je vždy na Ctrl+Shift+/.'
 Write-Host ''
-Write-Host '   Aktualizácia = spustiť tento istý príkaz znova.' -ForegroundColor DarkGray
+Write-Host '   O novej verzii ti dá Clover vedieť sám, aktualizuješ ju cez Ctrl+Shift+U.' -ForegroundColor DarkGray
 Write-Host ''
 if ($Paid) { Write-Host '   ☕ Vďaka za kávu. Clover je tvoj, aj so všetkými aktualizáciami.'; Write-Host '' }
 Start-Process $Gui -ArgumentList "--config-file `"$Lua`""
+}

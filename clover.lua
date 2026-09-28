@@ -162,6 +162,39 @@ local function coffee_paid_result()                  -- prečíta výsledok kont
   return true
 end
 
+-- ── Aktualizácie ────────────────────────────────────────────────────────────
+-- Raz za 6 h (prvýkrát 30 s po štarte) si Clover na pozadí stiahne súbor VERSION z kitu:
+-- 1. riadok = verzia, ďalšie = čo je nové. Keď je novší než ~/.config/clover/version,
+-- príde notifikácia a lišta hore. Nič sa neinštaluje samo: aktualizáciu spustí až človek
+-- cez Cmd+Shift+U (Windows Ctrl+Shift+U) a v novom tabe vidí, čo sa deje.
+local KIT = user.kit_url or 'https://raw.githubusercontent.com/ivanzatko/clover/main'
+local LATEST = table.concat({ CFG, 'state', 'latest' }, sep)
+local function ver_newer(a, b)                       -- a > b? verzie typu 2026.09.28.2
+  local x, y = {}, {}
+  for n in a:gmatch('%d+') do x[#x + 1] = tonumber(n) end
+  for n in b:gmatch('%d+') do y[#y + 1] = tonumber(n) end
+  for i = 1, math.max(#x, #y) do
+    if (x[i] or 0) ~= (y[i] or 0) then return (x[i] or 0) > (y[i] or 0) end
+  end
+  return false
+end
+local function update_check()
+  pcall(wezterm.background_child_process, { is_windows and 'curl.exe' or '/usr/bin/curl',
+    '-fsS', '--max-time', '8', '--create-dirs', '-o', LATEST, KIT .. '/VERSION' })
+end
+local function update_available()                    -- nová verzia a novinky, inak nil
+  local fh = io.open(LATEST, 'r'); if not fh then return nil end
+  local s = fh:read('*a') or ''; fh:close()
+  local v, notes = s:match('^(%d[%d%.]*)\r?\n(.*)$') -- bez konca riadku = ešte sa sťahuje
+  if not v or not ver_newer(v, cfg_read('version') or '0') then return nil end
+  notes = notes:gsub('%s+$', ''):gsub('%s*\r?\n%s*', ' · ')
+  return v, notes
+end
+local update_cmd = is_windows
+  and { 'powershell.exe', '-NoLogo', '-ExecutionPolicy', 'Bypass', '-Command',
+    "$env:CLOVER_UPDATE='1'; irm '" .. KIT .. "/install-win.ps1' | iex; [void][Console]::ReadKey($true)" }
+  or { '/bin/bash', '-c', "curl -fsSL '" .. KIT .. "/install-mac.sh' | CLOVER_UPDATE=1 /bin/bash; read -rsn1" }
+
 -- Ťahák: súbor skratky.txt vedľa konfigu, zavrie sa ľubovoľnou klávesou
 local cheat = table.concat({ home, '.config', 'clover', 'skratky.txt' }, sep)
 local cheat_cmd = is_windows
@@ -193,6 +226,8 @@ config.keys = {
   { key = 'k', mods = mod .. (is_windows and '' or '|SHIFT'), action = wezterm.action_callback(function()
     wezterm.open_with(coffee_url())
   end) },
+  -- aktualizácia Cloveru v novom tabe (Mac: Cmd+Shift+U, Windows: Ctrl+Shift+U)
+  { key = 'u', mods = mod .. (is_windows and '' or '|SHIFT'), action = act.SpawnCommandInNewTab { args = update_cmd, cwd = home } },
 }
 
 -- Písanie ako v bežnej appke (overené na Claude Code vstupe)
@@ -303,11 +338,23 @@ wezterm.on('update-status', function(window, pane)
       table.insert(items, (state == 'wait' and '⏳ ' .. l .. ' čaká' or '✓ ' .. l .. ' hotovo'))
     end
   end
+  local now = os.time()
+  wezterm.GLOBAL.clover_started = wezterm.GLOBAL.clover_started or now
+  -- nová verzia: kontrola každých 6 h, notifikácia raz za verziu a spustenie
+  if now >= (wezterm.GLOBAL.clover_vercheck or wezterm.GLOBAL.clover_started + 30) then
+    wezterm.GLOBAL.clover_vercheck = now + 6 * 3600
+    update_check()
+  end
+  local upd_v, upd_notes = update_available()
+  local upd_key = is_windows and 'Ctrl+Shift+U' or 'Cmd+Shift+U'
+  if upd_v and wezterm.GLOBAL.clover_upd_toast ~= upd_v then
+    wezterm.GLOBAL.clover_upd_toast = upd_v
+    window:toast_notification('Clover 🍀', 'Nová verzia Cloveru' .. (upd_notes ~= '' and (': ' .. upd_notes) or '')
+      .. '. Aktualizuješ cez ' .. upd_key .. '.', nil, 15000)
+  end
   -- káva: kontrola platby každých 10 min, notifikácia raz za spustenie (minútu po štarte)
   local coffee = coffee_active()
   if coffee then
-    local now = os.time()
-    wezterm.GLOBAL.clover_started = wezterm.GLOBAL.clover_started or now
     if coffee_paid_result() then
       coffee = false
     elseif (wezterm.GLOBAL.clover_paycheck or 0) + 600 < now then
@@ -321,7 +368,7 @@ wezterm.on('update-status', function(window, pane)
   end
 
   local o = window:get_config_overrides() or {}
-  local show = #items > 0 or coffee
+  local show = #items > 0 or coffee or upd_v ~= nil
   if (o.hide_tab_bar_if_only_one_tab == false) ~= show then
     o.hide_tab_bar_if_only_one_tab = not show
     window:set_config_overrides(o)
@@ -335,6 +382,10 @@ wezterm.on('update-status', function(window, pane)
     table.insert(status, { Foreground = { Color = '#9aa5ce' } })
     table.insert(status, { Text = (#items > 0 and '·   ' or '') .. '☕ Sadol ti Clover? Kávu kúpiš cez '
       .. (is_windows and 'Ctrl+Shift+K' or 'Cmd+Shift+K') .. '   ' })
+  end
+  if upd_v then
+    table.insert(status, { Foreground = { Color = '#9ece6a' } })
+    table.insert(status, { Text = ((#items > 0 or coffee) and '·   ' or '') .. '🆕 Nová verzia Cloveru, aktualizuješ cez ' .. upd_key .. '   ' })
   end
   window:set_right_status(show and wezterm.format(status) or '')
 end)

@@ -2,7 +2,7 @@
 # Clover — inštalácia pre Mac
 # Použitie: curl -fsSL <KIT_URL>/install-mac.sh | bash
 # Bezpečné spustiť opakovane: čo už máš, preskočí; tvoje súbory neprepíše (robí zálohu).
-# Aktualizácia Clover = spustiť znova.
+# Aktualizácia Clover = spustiť znova (alebo Cmd+Shift+U v Cloveri, keď ponúkne novú verziu).
 set -euo pipefail
 
 KIT_URL="${KIT_URL:-https://raw.githubusercontent.com/ivanzatko/clover/main}"
@@ -10,10 +10,12 @@ WEZ_VER="20240203-110809-5046fc22"
 WEZ_ZIP="https://github.com/wezterm/wezterm/releases/download/$WEZ_VER/WezTerm-macos-$WEZ_VER.zip"
 # kontrolný súčet z oficiálneho releasu (…zip.sha256), pri novej verzii WezTermu aktualizovať
 WEZ_SHA256="e77388cad55f2e9da95a220a89206a6c58f865874a629b7c3ea3c162f5692224"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+# lokálne súbory len keď beží ako súbor z kitu; pri curl | bash nie (inak by bral súbory z aktuálneho priečinka)
+SCRIPT_DIR=""; [ -f "${BASH_SOURCE[0]:-}" ] && SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP=/Applications/Clover.app
 CFG_DIR="$HOME/.config/clover"
-CLOVER_VER="2026.09.27"
+CLOVER_VER="?"                      # skutočná verzia príde zo súboru VERSION v kite
+UPDATE="${CLOVER_UPDATE:-}"         # 1 = aktualizácia spustená z Cloveru (Cmd+Shift+U): bez úvodu a otázok
 API="${CLOVER_API:-https://www.ivanzatko.com/api/clover/install}"
 # bez stien textu z Homebrew
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -34,6 +36,9 @@ add_line() { grep -qsF "$1" "$2" || echo "$1" >> "$2"; }
 
 [ -d "$APP" ] && EXISTING=1 || EXISTING=""
 
+if [ -n "$UPDATE" ]; then
+  printf "\n   ${G}🍀  Clover${R}  ${D}· aktualizácia${R}\n\n   Sťahujem novú verziu. Rozrobené konverzácie nechávam tak, ako sú.\n"
+else
 [ -n "$TTY" ] && clear
 cat <<EOF
 
@@ -56,6 +61,7 @@ cat <<EOF
 
 EOF
 if [ -n "$TTY" ]; then printf "   ${B}Enter${R} = ideme · ${B}Ctrl+C${R} = radšej nie  "; pause; fi
+fi
 
 # e-mail: pri aktualizácii si ho pamätáme, pri prvej inštalácii sa spýtame
 say "Najprv tvoj e-mail"
@@ -66,7 +72,7 @@ EMAIL="${CLOVER_EMAIL:-}"
 [ -z "$EMAIL" ] && [ -s "$CFG_DIR/email" ] && EMAIL="$(cat "$CFG_DIR/email")"
 if [ -n "$EMAIL" ] && valid "$EMAIL"; then
   done_ "použijem $EMAIL"
-elif [ -n "$TTY" ]; then
+elif [ -n "$TTY" ] && [ -z "$UPDATE" ]; then
   EMAIL=""
   while ! valid "$EMAIL"; do
     printf "   E-mail: "; read -r -u 3 EMAIL || break
@@ -85,6 +91,11 @@ if valid "$EMAIL"; then printf '%s\n' "$EMAIL" > "$CFG_DIR/email"; fi
 say "1/5 Homebrew a git"
 why "Homebrew je obchod s aplikáciami pre terminál. Bez reklám a bez recenzií s jednou hviezdičkou." \
     "Git je stroj času na súbory. Claude ho potrebuje, aby vedel, čo zmenil, a vedel to vrátiť."
+# brew môže byť nainštalovaný, len nie v PATH (napr. keď nás nespustil login shell)
+for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  command -v brew >/dev/null 2>&1 && break
+  [ -x "$b" ] && eval "$("$b" shellenv)"
+done
 if ! command -v brew >/dev/null 2>&1; then
   echo
   echo "   ${Y}Mac si teraz vypýta heslo do počítača.${R}"
@@ -137,6 +148,13 @@ why "Stiahnem WezTerm, open source terminál od Weza Furlonga. To je motor Clove
 if [ -f "$APP/Contents/Resources/clover-version" ] && [ "$(cat "$APP/Contents/Resources/clover-version")" = "$WEZ_VER" ]; then
   done_ "appka už je, nastavenia som aktualizoval"
 elif pgrep -f "$APP/Contents/MacOS" >/dev/null 2>&1; then
+  if [ -n "$UPDATE" ]; then
+    echo "   Táto verzia potrebuje aj novú appku a tú nevymením, kým Clover beží."
+    echo "   Zavri Clover (Cmd+Q), otvor aplikáciu Terminál a spusti v nej:"
+    echo "   ${B}curl -fsSL $KIT_URL/install-mac.sh | bash${R}"
+    echo "   Neboj, rozrobené konverzácie sa po otvorení vrátia na svoje miesto."
+    exit 1
+  fi
   echo "   Clover práve beží. Zavri ho (Cmd+Q) a spusti tento príkaz znova."
   echo "   Neboj, rozrobené konverzácie sa po otvorení vrátia na svoje miesto."
   exit 1
@@ -183,6 +201,9 @@ fetch add_hook.py "$CFG_DIR/add_hook.py" && /usr/bin/python3 "$CFG_DIR/add_hook.
 mkdir -p ~/.claude/skills/vitaj
 fetch claude/skills/vitaj/SKILL.md ~/.claude/skills/vitaj/SKILL.md
 done_ "upratané"
+# verzia až na konci: keď sa niečo vyššie pokazí, Clover bude aktualizáciu ponúkať ďalej
+fetch VERSION "$CFG_DIR/version"
+CLOVER_VER="$(head -1 "$CFG_DIR/version")"
 
 # zápis inštalácie; keď server nedostupný, nevadí, Clover funguje aj tak
 PAID=""
@@ -192,6 +213,14 @@ if valid "$EMAIL"; then
   case "$RESP" in *'"paid":true'*) PAID=yes ;; *'"paid":false'*) PAID=no ;; esac
 fi
 
+if valid "$EMAIL" && [ "$PAID" = yes ]; then date -u +%Y-%m-%dT%H:%M:%SZ > "$CFG_DIR/paid"; fi
+if [ -n "$UPDATE" ]; then
+  printf "\n   ${G}🍀  Hotovo.${R} Clover je aktualizovaný na verziu ${B}%s${R}.\n" "$CLOVER_VER"
+  NOTES="$(tail -n +2 "$CFG_DIR/version")"
+  [ -n "$NOTES" ] && printf "\n   ${B}Čo je nové${R}\n%s\n" "$(printf '%s\n' "$NOTES" | sed 's/^/   · /')"
+  printf "\n   Nastavenia sa načítali samé, nič nereštartuj.\n   ${D}Tento tab zavrieš ľubovoľnou klávesou.${R}\n\n"
+  exit 0
+fi
 cat <<EOF
 
    ${G}🍀  Hotovo.${R} Clover je v Aplikáciách a práve sa otvára.
@@ -202,11 +231,10 @@ cat <<EOF
    ${Y}→${R} Ťahák skratiek je vždy na ${B}Cmd+/${R}.
 
    ${D}Tip: pretiahni Clover z Aplikácií do Docku.
-   Aktualizácia = spustiť tento istý príkaz znova.${R}
+   O novej verzii ti dá Clover vedieť sám, aktualizuješ ju cez Cmd+Shift+U.${R}
 
 EOF
 if [ "$PAID" = yes ]; then
-  date -u +%Y-%m-%dT%H:%M:%SZ > "$CFG_DIR/paid"
   echo "   ☕ Vďaka za kávu. Clover je tvoj, aj so všetkými aktualizáciami."
 fi
 echo
