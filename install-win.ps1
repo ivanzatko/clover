@@ -126,7 +126,10 @@ if ($Existing) {
 }
 Fetch 'assets/clover.ico' (Join-Path $Cfg 'clover.ico')
 $Local = Join-Path $HOME '.clover.lua'
-if (-not (Test-Path $Local)) { Fetch 'clover.example.lua' $Local }
+if (-not (Test-Path $Local)) {
+  Fetch 'clover.example.lua' $Local
+  New-Item -ItemType Directory -Force (Join-Path $HOME 'AI') | Out-Null
+}
 # skratka „Clover“ v Štart menu a na ploche
 $Gui = "$env:ProgramFiles\WezTerm\wezterm-gui.exe"
 $Shell = New-Object -ComObject WScript.Shell

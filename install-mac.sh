@@ -134,7 +134,7 @@ fetch notify.sh "$CFG_DIR/notify.sh"
 fetch assets/clover.icns "$CFG_DIR/clover.icns"
 if [ ! -f ~/.clover.lua ]; then
   if [ -f ~/.claude-terminal.lua ]; then mv ~/.claude-terminal.lua ~/.clover.lua
-  else fetch clover.example.lua ~/.clover.lua; fi
+  else fetch clover.example.lua ~/.clover.lua; mkdir -p ~/AI; fi
 fi
 # kto už Clover mal, uvítanie pre nováčikov neuvidí
 if [ -n "$EXISTING" ]; then mkdir -p "$CFG_DIR/state"; touch "$CFG_DIR/state/welcomed"; fi

@@ -98,7 +98,7 @@ aspoň jednu správu a nebeží práve v inom okne. Stará sa o to hook `remembe
 
 ## Osobné nastavenia
 
-`~/.clover.lua`: priečinok, počet panelov (1/2/4), obnova sessions, písmo, farby.
+`~/.clover.lua`: priečinok (pri novej inštalácii `~/AI`, inštalátor ho založí), počet panelov (1/2/4), obnova sessions, písmo, farby.
 Písmo sa na Macu nastaví podľa obrazovky (12 na FullHD, Retina MacBook ~9,5). Ak si nastavíš
 `font_size`, platí tvoje.
 

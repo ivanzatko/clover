@@ -22,6 +22,8 @@ if not ok then ok, loaded = pcall(dofile, home .. sep .. '.claude-terminal.lua')
 if ok and type(loaded) == 'table' then user = loaded end
 
 local WORKDIR = user.workdir or home
+-- nastavený priečinok neexistuje (zmazaný, premenovaný) → radšej domov než pád panelov
+if WORKDIR ~= home and not pcall(wezterm.read_dir, WORKDIR) then WORKDIR = home end
 local PANES = user.panes or 4 -- 1, 2 alebo 4
 local CLAUDE = 'claude' .. (user.claude_args and (' ' .. user.claude_args) or '')
 
